@@ -14,7 +14,7 @@ router.put('/:id', rfpController.updateRFP);
 router.delete('/:id', rfpController.deleteRFP);
 
 // Send RFP to vendors
-router.post('/:id/send', rfpController.sendRFP);
+router.post('/:id/send', rfpController.sendRFPToVendors);
 
 // Get vendors for an RFP
 router.get('/:id/vendors', rfpController.getVendorsForRFP);
