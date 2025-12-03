@@ -39,11 +39,23 @@ export const createRFP = async (req, res, next) => {
   try {
     const { items, ...rfpData } = req.body;
 
+    // Normalize items - convert specifications object to string if needed
+    const normalizedItems = (items || []).map(item => {
+      const normalizedItem = { ...item };
+      if (normalizedItem.specifications && typeof normalizedItem.specifications === 'object' && !Array.isArray(normalizedItem.specifications)) {
+        // Convert object specifications to a formatted string
+        normalizedItem.specifications = Object.entries(normalizedItem.specifications)
+          .map(([key, value]) => `${key}: ${value}`)
+          .join(', ');
+      }
+      return normalizedItem;
+    });
+
     // Create RFP with items in a transaction
     const rfp = await RFP.create(
       {
         ...rfpData,
-        items: items || [],
+        items: normalizedItems,
       },
       {
         include: [{ association: 'items' }],
