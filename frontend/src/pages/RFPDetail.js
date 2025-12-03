@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import apiClient from '../api/client';
 
@@ -8,20 +8,20 @@ const VendorModal = ({ isOpen, onClose, rfpId, onSent }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
-  useEffect(() => {
-    if (isOpen) {
-      fetchVendors();
-    }
-  }, [isOpen]);
-
-  const fetchVendors = async () => {
+  const fetchVendors = useCallback(async () => {
     try {
       const response = await apiClient.get('/vendors');
       setVendors(response.data.data);
     } catch (err) {
       setError('Failed to load vendors');
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    if (isOpen) {
+      fetchVendors();
+    }
+  }, [isOpen, fetchVendors]);
 
   const toggleVendor = (vendorId) => {
     if (selectedVendors.includes(vendorId)) {
@@ -99,12 +99,7 @@ const RFPDetail = () => {
   const [error, setError] = useState(null);
   const [showVendorModal, setShowVendorModal] = useState(false);
 
-  useEffect(() => {
-    fetchRFP();
-    fetchProposals();
-  }, [id]);
-
-  const fetchRFP = async () => {
+  const fetchRFP = useCallback(async () => {
     try {
       setLoading(true);
       const response = await apiClient.get(`/rfps/${id}`);
@@ -115,16 +110,21 @@ const RFPDetail = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [id]);
 
-  const fetchProposals = async () => {
+  const fetchProposals = useCallback(async () => {
     try {
       const response = await apiClient.get(`/proposals/rfp/${id}`);
       setProposals(response.data.data);
     } catch (err) {
       console.error('Failed to load proposals');
     }
-  };
+  }, [id]);
+
+  useEffect(() => {
+    fetchRFP();
+    fetchProposals();
+  }, [fetchRFP, fetchProposals]);
 
   if (loading) {
     return (

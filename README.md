@@ -57,22 +57,29 @@ cd rfp-management-system
 
 ### 2. Set Up Database
 
-Start PostgreSQL using Docker Compose:
+Start PostgreSQL using Docker Compose OR use local PostgreSQL:
 
+**Option A: Docker (Recommended)**
 ```bash
 docker-compose up -d
 ```
 
+**Option B: Local PostgreSQL**
+```bash
+brew services start postgresql@17
+```
+
 This will:
 - Start PostgreSQL on port 5432
-- Create the `rfp_management` database
-- Run initialization scripts to create tables
-- Seed 5 sample vendors
+- Create the `rfp_management` database (if using Docker)
+- Run initialization scripts to create tables (if using Docker)
+- Seed 5 sample vendors (if using Docker)
 
 Verify the database is running:
-
 ```bash
-docker ps
+docker ps  # for Docker
+# OR
+brew services list | grep postgresql  # for local installation
 ```
 
 ### 3. Backend Setup
@@ -87,38 +94,20 @@ npm install
 Create a `.env` file in the `backend` directory:
 
 ```bash
-cp ../.env.example .env
+cp .env.example .env
 ```
 
-Edit the `.env` file with your configuration:
+**IMPORTANT:** Edit the `.env` file and add your OpenAI API key:
 
-```env
-# Server
-PORT=5000
-NODE_ENV=development
-
-# Database
-DB_HOST=localhost
-DB_PORT=5432
-DB_NAME=rfp_management
-DB_USER=rfpuser
-DB_PASSWORD=rfppassword
-
-# OpenAI - REQUIRED
-OPENAI_API_KEY=your_openai_api_key_here
-
-# Email (Ethereal will be used by default if not configured)
-# For Gmail, uncomment and configure:
-# SMTP_HOST=smtp.gmail.com
-# SMTP_PORT=587
-# SMTP_USER=your_email@gmail.com
-# SMTP_PASS=your_app_specific_password
-
-# Frontend URL
-FRONTEND_URL=http://localhost:3000
+```bash
+nano .env  # or use your preferred editor
 ```
 
-**Important**: You must provide a valid OpenAI API key for the AI features to work.
+Required configuration:
+- **OPENAI_API_KEY**: Get from https://platform.openai.com/api-keys
+- All other settings have working defaults
+
+See [ENVIRONMENT_SETUP.md](ENVIRONMENT_SETUP.md) for detailed configuration options including email setup.
 
 Start the backend server:
 
@@ -126,7 +115,7 @@ Start the backend server:
 npm run dev
 ```
 
-The backend API will be available at `http://localhost:5000/api`
+The backend API will be available at `http://localhost:5001/api`
 
 ### 4. Frontend Setup
 
@@ -137,12 +126,13 @@ cd frontend
 npm install
 ```
 
-The frontend `.env` file is already configured. If needed, you can modify it:
+Create a `.env` file (uses defaults, usually no changes needed):
 
 ```bash
-# frontend/.env
-REACT_APP_API_URL=http://localhost:5000/api
+cp .env.example .env
 ```
+
+The frontend is configured to connect to `http://localhost:5001/api` by default.
 
 Start the frontend development server:
 

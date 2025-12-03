@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import apiClient from '../api/client';
 
@@ -8,11 +8,7 @@ const ComparisonDashboard = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  useEffect(() => {
-    fetchComparison();
-  }, [id]);
-
-  const fetchComparison = async () => {
+  const fetchComparison = useCallback(async () => {
     try {
       setLoading(true);
       const response = await apiClient.get(`/comparison/rfp/${id}`);
@@ -23,7 +19,11 @@ const ComparisonDashboard = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [id]);
+
+  useEffect(() => {
+    fetchComparison();
+  }, [fetchComparison]);
 
   const getScoreForVendor = (vendorId) => {
     return comparison.comparison.scores.find(s => s.vendor_id === vendorId);
