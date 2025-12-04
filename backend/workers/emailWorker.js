@@ -1,6 +1,6 @@
-import { consumeFromQueue, QUEUES } from '../config/rabbitmq.js';
-import { sendRFPEmail } from '../services/emailService.js';
-import { Vendor, RFP } from '../models/index.js';
+import { consumeFromQueue, QUEUES } from "../config/rabbitmq.js";
+import { sendRFPEmail } from "../services/emailService.js";
+import { Vendor, RFP } from "../models/index.js";
 
 /**
  * Process email jobs from the queue
@@ -23,7 +23,7 @@ async function processEmailJob(data) {
     let rfp = rfpData;
     if (!rfp && rfpId) {
       rfp = await RFP.findByPk(rfpId, {
-        include: [{ association: 'items' }],
+        include: [{ association: "items" }],
       });
       if (!rfp) {
         throw new Error(`RFP not found: ${rfpId}`);
@@ -33,10 +33,10 @@ async function processEmailJob(data) {
 
     // Send email
     const result = await sendRFPEmail(vendor, rfp);
-    console.log(`✓ Email sent to ${vendor.email} for RFP ${rfp.id}`);
+
     return result;
   } catch (error) {
-    console.error('Email worker error:', error);
+    console.error("Email worker error:", error);
     throw error;
   }
 }
@@ -45,7 +45,6 @@ async function processEmailJob(data) {
  * Start the email worker
  */
 export async function startEmailWorker() {
-  console.log('Starting email worker...');
   await consumeFromQueue(QUEUES.EMAIL, processEmailJob);
 }
 
