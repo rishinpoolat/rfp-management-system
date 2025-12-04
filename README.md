@@ -22,28 +22,29 @@ Before running this application, ensure you have:
 - **Node.js** v18 or higher
 - **Docker** and **Docker Compose**
 - **OpenAI API Key** (for AI features)
-- **Gmail Account** (optional, for email testing - Ethereal Email used by default)
+- **Gmail Account** (for real email sending - configured for production use)
 
 ## Tech Stack
 
 ### Backend
 - **Express.js**: Web framework
 - **PostgreSQL**: Database (running in Docker)
-- **pg (node-postgres)**: PostgreSQL client
+- **Sequelize**: ORM for database operations
 - **OpenAI API**: AI-powered parsing and comparison (using GPT-4o-mini)
-- **Nodemailer**: Email sending
+- **Nodemailer**: Email sending via Gmail SMTP
+- **RabbitMQ**: Message queue for async job processing
+- **Redis**: Caching layer for performance optimization
 - **dotenv**: Environment variable management
 - **CORS**: Cross-origin resource sharing
 
 ### Frontend
 - **React 18**: UI framework
-- **React Router DOM**: Client-side routing
-- **Axios**: HTTP client
-- **React Hook Form**: Form management
-- **CSS3**: Styling (no external CSS framework)
+- **React Router DOM v6**: Client-side routing
+- **Axios**: HTTP client for API calls
+- **CSS3**: Custom styling (no external CSS framework)
 
 ### Infrastructure
-- **Docker Compose**: PostgreSQL containerization
+- **Docker Compose**: Orchestrates PostgreSQL, Redis, and RabbitMQ
 - **RESTful API**: Backend architecture
 
 ## Setup Instructions
@@ -73,7 +74,12 @@ This will:
 - Start PostgreSQL on port 5432
 - Create the `rfp_management` database (if using Docker)
 - Run initialization scripts to create tables (if using Docker)
-- Seed 5 sample vendors (if using Docker)
+- Seed 5 sample vendors automatically (if using Docker):
+  1. TechSupply Co. (tech@supply.co)
+  2. OfficeMax Solutions (sales@officemax.com)
+  3. Global Hardware Inc. (info@globalhw.com)
+  4. Business Equipment Ltd. (contact@bizequip.com)
+  5. Corporate Supplies Group (orders@corpsupply.com)
 
 Verify the database is running:
 ```bash
@@ -107,7 +113,7 @@ Required configuration:
 - **OPENAI_API_KEY**: Get from https://platform.openai.com/api-keys
 - All other settings have working defaults
 
-See [ENVIRONMENT_SETUP.md](ENVIRONMENT_SETUP.md) for detailed configuration options including email setup.
+For complete testing instructions and email setup, see **[MANUAL_TESTING_GUIDE.md](MANUAL_TESTING_GUIDE.md)**.
 
 Start the backend server:
 
@@ -142,16 +148,15 @@ npm start
 
 The application will open at `http://localhost:3000`
 
-### 5. Configure Email (Optional)
+### 5. Configure Email
 
-**Option A: Use Ethereal Email (Default - Recommended for Testing)**
+**Gmail SMTP Setup** (required for real email sending):
 
-The system automatically uses Ethereal Email (fake SMTP) for testing. Check the backend console for preview URLs when emails are sent.
-
-**Option B: Use Gmail**
-
-1. Enable 2-factor authentication on your Gmail account
+1. Enable 2-factor authentication on your Gmail account: https://myaccount.google.com/security
 2. Generate an app-specific password: https://myaccount.google.com/apppasswords
+   - Select app: Mail
+   - Select device: Other (Custom name) - enter "RFP System"
+   - Copy the 16-character password
 3. Update your backend `.env` file:
 
 ```env
@@ -160,6 +165,10 @@ SMTP_PORT=587
 SMTP_USER=your_email@gmail.com
 SMTP_PASS=your_16_character_app_password
 ```
+
+4. Restart the backend server for changes to take effect
+
+**Note**: The system is already configured for Gmail. For testing without real email, you can leave SMTP credentials blank and the system will auto-configure Ethereal Email (test email service with preview URLs).
 
 ## API Documentation
 
@@ -206,17 +215,33 @@ SMTP_PASS=your_16_character_app_password
 **Parse RFP (Natural Language):**
 
 ```bash
-curl -X POST http://localhost:5000/api/rfps/parse \
+curl -X POST http://localhost:5001/api/rfps/parse \
   -H "Content-Type: application/json" \
   -d '{
     "input": "I need 20 laptops with 16GB RAM and 15 monitors. Budget is $50,000. Delivery in 30 days."
   }'
 ```
 
+**Response:**
+```json
+{
+  "title": "Office Equipment Procurement",
+  "description": "Procurement of laptops and monitors",
+  "items": [
+    {"item_type": "Laptop", "quantity": 20, "specifications": "16GB RAM"},
+    {"item_type": "Monitor", "quantity": 15, "specifications": "27-inch"}
+  ],
+  "budget": 50000,
+  "deadline": "2025-01-03",
+  "payment_terms": "Net 30",
+  "warranty_requirement": "Standard warranty"
+}
+```
+
 **Create RFP:**
 
 ```bash
-curl -X POST http://localhost:5000/api/rfps \
+curl -X POST http://localhost:5001/api/rfps \
   -H "Content-Type: application/json" \
   -d '{
     "title": "Office Equipment Procurement",
@@ -229,14 +254,33 @@ curl -X POST http://localhost:5000/api/rfps \
   }'
 ```
 
+**Response:**
+```json
+{
+  "id": 1,
+  "title": "Office Equipment Procurement",
+  "budget": 50000,
+  "status": "draft",
+  "created_at": "2025-12-04T10:30:00Z"
+}
+```
+
 **Send RFP to Vendors:**
 
 ```bash
-curl -X POST http://localhost:5000/api/rfps/1/send \
+curl -X POST http://localhost:5001/api/rfps/1/send \
   -H "Content-Type: application/json" \
   -d '{
     "vendorIds": [1, 2, 3]
   }'
+```
+
+**Response:**
+```json
+{
+  "message": "RFP sent to 3 vendors successfully",
+  "emailsSent": 3
+}
 ```
 
 ## Database Schema
@@ -442,7 +486,18 @@ with reasoning and risk analysis. Return as structured JSON."
 
 ## Testing the Application
 
-### Manual Testing Workflow
+For complete step-by-step manual testing instructions, see **[MANUAL_TESTING_GUIDE.md](MANUAL_TESTING_GUIDE.md)**.
+
+The guide includes:
+- Detailed setup instructions
+- 6 comprehensive test scenarios with expected results
+- API endpoint testing
+- Error handling tests
+- Database verification
+- Complete testing checklist
+- Troubleshooting guide
+
+### Quick Start Testing
 
 1. **Start Services**
    ```bash
@@ -456,37 +511,11 @@ with reasoning and risk analysis. Return as structured JSON."
    cd frontend && npm start
    ```
 
-2. **Create an RFP**
-   - Go to http://localhost:3000
-   - Click "Create RFP"
-   - Enter: "I need 20 laptops with 16GB RAM and 10 monitors. Budget is $30,000. Delivery in 30 days. Net 30 payment terms and 2 year warranty."
-   - Click "Parse with AI"
-   - Review and save
-
-3. **Manage Vendors**
-   - Go to "Vendors" page
-   - Note: 5 sample vendors are pre-loaded
-   - Add a new vendor or use existing ones
-
-4. **Send RFP**
-   - Go to RFP detail page
-   - Click "Send to Vendors"
-   - Select 2-3 vendors
-   - Click "Send"
-   - Check backend console for email preview URLs (Ethereal)
-
-5. **Receive Proposals**
-   - Go to "Receive Proposal"
-   - Select the RFP
-   - Select a vendor
-   - Click "Load Sample Email" or paste vendor response
-   - Click "Parse Proposal"
-   - Review parsed data
-
-6. **Compare Proposals**
-   - Create 2-3 proposals for the same RFP
-   - Go to RFP detail page
-   - Click "Compare Proposals"
+2. **Test Complete Workflow** (5 minutes)
+   - Create RFP from natural language
+   - Send to vendors via email
+   - Parse vendor responses
+   - Compare proposals with AI scoring
    - Review AI scores and recommendation
 
 ### Sample Vendor Email Response
