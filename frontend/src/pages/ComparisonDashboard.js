@@ -1,21 +1,20 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, Link } from 'react-router-dom';
+import toast from 'react-hot-toast';
 import apiClient from '../api/client';
 
 const ComparisonDashboard = () => {
   const { id } = useParams();
   const [comparison, setComparison] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
 
   const fetchComparison = useCallback(async () => {
     try {
       setLoading(true);
       const response = await apiClient.get(`/comparison/rfp/${id}`);
       setComparison(response.data.data);
-      setError(null);
     } catch (err) {
-      setError(err.response?.data?.error || 'Failed to load comparison');
+      toast.error(err.response?.data?.error || 'Failed to load comparison');
     } finally {
       setLoading(false);
     }
@@ -55,13 +54,8 @@ const ComparisonDashboard = () => {
     );
   }
 
-  if (error || !comparison) {
-    return (
-      <div className="container">
-        <div className="alert alert-error">{error || 'Comparison not available'}</div>
-        <Link to={`/rfps/${id}`} className="btn btn-secondary">Back to RFP</Link>
-      </div>
-    );
+  if (!comparison) {
+    return null;
   }
 
   const recommendedVendor = comparison.proposals.find(

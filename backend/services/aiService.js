@@ -8,7 +8,12 @@ const openai = new OpenAI({
 
 export const parseRFPInput = async (naturalLanguageInput) => {
   try {
+    const currentYear = new Date().getFullYear();
+    const currentDate = new Date().toISOString().split('T')[0];
+
     const prompt = `You are an expert at parsing procurement requirements into structured data.
+
+IMPORTANT: Today's date is ${currentDate}. The current year is ${currentYear}. When parsing dates or deadlines, use ${currentYear} as the default year unless explicitly specified otherwise.
 
 Parse this RFP request into JSON:
 "${naturalLanguageInput}"
@@ -18,7 +23,7 @@ Extract:
 - description (detailed description)
 - items (array of {item_type, quantity, specifications})
 - budget (number only, no currency symbols)
-- deadline (date string in YYYY-MM-DD format, if mentioned)
+- deadline (date string in YYYY-MM-DD format, if mentioned. Use ${currentYear} for the year if not specified)
 - payment_terms (extract payment terms if mentioned)
 - warranty_requirement (extract warranty requirements if mentioned)
 - any other relevant terms

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
+import toast from 'react-hot-toast';
 import apiClient from '../api/client';
 
 const ReceiveProposal = () => {
@@ -7,8 +8,6 @@ const ReceiveProposal = () => {
   const [rfps, setRfps] = useState([]);
   const [vendors, setVendors] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
-  const [success, setSuccess] = useState(null);
   const [step, setStep] = useState(1);
   const [formData, setFormData] = useState({
     rfp_id: '',
@@ -30,26 +29,25 @@ const ReceiveProposal = () => {
       setRfps(rfpsRes.data.data);
       setVendors(vendorsRes.data.data);
     } catch (err) {
-      setError('Failed to load data');
+      toast.error('Failed to load data');
     }
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!formData.rfp_id || !formData.vendor_id || !formData.email_content) {
-      setError('All fields are required');
+      toast.error('All fields are required');
       return;
     }
 
     try {
       setLoading(true);
-      setError(null);
       const response = await apiClient.post('/proposals/receive', formData);
       setParsedProposal(response.data.data);
-      setSuccess('Proposal parsed and saved successfully!');
+      toast.success('Proposal parsed and saved successfully!');
       setStep(2);
     } catch (err) {
-      setError(err.response?.data?.error || 'Failed to parse proposal');
+      toast.error(err.response?.data?.error || 'Failed to parse proposal');
     } finally {
       setLoading(false);
     }
@@ -63,8 +61,6 @@ const ReceiveProposal = () => {
     });
     setParsedProposal(null);
     setStep(1);
-    setSuccess(null);
-    setError(null);
   };
 
   const sampleEmail = `Dear Procurement Team,
@@ -101,6 +97,12 @@ TechSupply Co.`;
 
   return (
     <div className="container">
+      <div style={{ marginBottom: '20px' }}>
+        <Link to="/" className="btn btn-secondary">
+          ← Back to Dashboard
+        </Link>
+      </div>
+
       <div className="card">
         <div className="card-header">
           <h2 className="card-title">Receive Vendor Proposal</h2>
@@ -108,9 +110,6 @@ TechSupply Co.`;
             Paste vendor's email response and AI will extract pricing and terms
           </p>
         </div>
-
-        {error && <div className="alert alert-error">{error}</div>}
-        {success && <div className="alert alert-success">{success}</div>}
 
         {step === 1 && (
           <form onSubmit={handleSubmit}>
@@ -176,10 +175,6 @@ TechSupply Co.`;
 
         {step === 2 && parsedProposal && (
           <div>
-            <div className="alert alert-success">
-              Proposal has been successfully parsed and saved!
-            </div>
-
             <h3 style={{ fontSize: '18px', fontWeight: '600', marginBottom: '16px' }}>
               Parsed Proposal Details
             </h3>

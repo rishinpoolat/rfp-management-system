@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
+import toast from 'react-hot-toast';
 import apiClient from '../api/client';
 
 const Dashboard = () => {
   const [rfps, setRfps] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
 
   useEffect(() => {
     fetchRFPs();
@@ -16,9 +16,8 @@ const Dashboard = () => {
       setLoading(true);
       const response = await apiClient.get('/rfps');
       setRfps(response.data.data);
-      setError(null);
     } catch (err) {
-      setError('Failed to load RFPs');
+      toast.error('Failed to load RFPs');
       console.error(err);
     } finally {
       setLoading(false);
@@ -47,8 +46,6 @@ const Dashboard = () => {
             + Create New RFP
           </Link>
         </div>
-
-        {error && <div className="alert alert-error">{error}</div>}
 
         {rfps.length === 0 ? (
           <div style={{ textAlign: 'center', padding: '40px', color: '#6b7280' }}>

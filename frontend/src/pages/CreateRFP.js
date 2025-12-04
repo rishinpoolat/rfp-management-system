@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
+import toast from 'react-hot-toast';
 import apiClient from '../api/client';
 
 const CreateRFP = () => {
@@ -8,24 +9,39 @@ const CreateRFP = () => {
   const [naturalInput, setNaturalInput] = useState('');
   const [parsedData, setParsedData] = useState(null);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
-  const [success, setSuccess] = useState(null);
 
   const handleParse = async (e) => {
     e.preventDefault();
     if (!naturalInput.trim()) {
-      setError('Please enter RFP details');
+      toast.error('Please enter RFP details');
       return;
     }
 
     try {
       setLoading(true);
-      setError(null);
       const response = await apiClient.post('/rfps/parse', { input: naturalInput });
-      setParsedData(response.data.data);
+      const data = response.data.data;
+
+      // Normalize specifications - convert objects to strings
+      if (data.items && Array.isArray(data.items)) {
+        data.items = data.items.map(item => {
+          if (item.specifications && typeof item.specifications === 'object' && !Array.isArray(item.specifications)) {
+            return {
+              ...item,
+              specifications: Object.entries(item.specifications)
+                .map(([key, value]) => `${key}: ${value}`)
+                .join(', ')
+            };
+          }
+          return item;
+        });
+      }
+
+      setParsedData(data);
       setStep(2);
+      toast.success('RFP parsed successfully! Please review and edit if needed.');
     } catch (err) {
-      setError(err.response?.data?.error || 'Failed to parse RFP');
+      toast.error(err.response?.data?.error || 'Failed to parse RFP');
       console.error(err);
     } finally {
       setLoading(false);
@@ -36,14 +52,13 @@ const CreateRFP = () => {
     e.preventDefault();
     try {
       setLoading(true);
-      setError(null);
       const response = await apiClient.post('/rfps', parsedData);
-      setSuccess('RFP created successfully!');
+      toast.success('RFP created successfully!');
       setTimeout(() => {
         navigate(`/rfps/${response.data.data.id}`);
       }, 1500);
     } catch (err) {
-      setError(err.response?.data?.error || 'Failed to create RFP');
+      toast.error(err.response?.data?.error || 'Failed to create RFP');
       console.error(err);
     } finally {
       setLoading(false);
@@ -74,6 +89,12 @@ const CreateRFP = () => {
 
   return (
     <div className="container">
+      <div style={{ marginBottom: '20px' }}>
+        <Link to="/" className="btn btn-secondary">
+          ← Back to Dashboard
+        </Link>
+      </div>
+
       <div className="card">
         <div className="card-header">
           <h2 className="card-title">Create New RFP</h2>
@@ -81,9 +102,6 @@ const CreateRFP = () => {
             Describe your procurement needs in natural language, and our AI will structure it for you
           </p>
         </div>
-
-        {error && <div className="alert alert-error">{error}</div>}
-        {success && <div className="alert alert-success">{success}</div>}
 
         {step === 1 && (
           <form onSubmit={handleParse}>
@@ -106,10 +124,6 @@ const CreateRFP = () => {
 
         {step === 2 && parsedData && (
           <form onSubmit={handleSave}>
-            <div className="alert alert-info">
-              AI has parsed your input. Please review and edit if needed before saving.
-            </div>
-
             <div className="form-group">
               <label className="form-label">Title *</label>
               <input

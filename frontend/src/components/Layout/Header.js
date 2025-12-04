@@ -1,5 +1,6 @@
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
+import './Header.css';
 
 const Header = () => {
   const location = useLocation();
@@ -15,16 +16,16 @@ const Header = () => {
           <h1 style={styles.logoText}>RFP Management System</h1>
         </Link>
         <nav style={styles.nav}>
-          <Link to="/" style={{...styles.navLink, ...(isActive('/') && styles.navLinkActive)}}>
+          <Link to="/" className={`nav-link ${isActive('/')}`}>
             Dashboard
           </Link>
-          <Link to="/rfps/create" style={{...styles.navLink, ...(isActive('/rfps/create') && styles.navLinkActive)}}>
+          <Link to="/rfps/create" className={`nav-link ${isActive('/rfps/create')}`}>
             Create RFP
           </Link>
-          <Link to="/vendors" style={{...styles.navLink, ...(isActive('/vendors') && styles.navLinkActive)}}>
+          <Link to="/vendors" className={`nav-link ${isActive('/vendors')}`}>
             Vendors
           </Link>
-          <Link to="/proposals/receive" style={{...styles.navLink, ...(isActive('/proposals/receive') && styles.navLinkActive)}}>
+          <Link to="/proposals/receive" className={`nav-link ${isActive('/proposals/receive')}`}>
             Receive Proposal
           </Link>
         </nav>
@@ -35,43 +36,34 @@ const Header = () => {
 
 const styles = {
   header: {
-    backgroundColor: '#1f2937',
+    background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
     color: 'white',
     padding: '0',
-    boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
-    marginBottom: '30px',
+    boxShadow: '0 4px 12px rgba(0,0,0,0.15), 0 2px 4px rgba(0,0,0,0.1)',
+    marginBottom: '32px',
   },
   container: {
     display: 'flex',
     justifyContent: 'space-between',
     alignItems: 'center',
-    padding: '16px 20px',
+    padding: '20px 24px',
   },
   logo: {
     textDecoration: 'none',
     color: 'white',
+    display: 'flex',
+    alignItems: 'center',
+    gap: '12px',
   },
   logoText: {
-    fontSize: '20px',
-    fontWeight: '600',
+    fontSize: '22px',
+    fontWeight: '700',
     margin: 0,
+    letterSpacing: '-0.5px',
   },
   nav: {
     display: 'flex',
-    gap: '24px',
-  },
-  navLink: {
-    color: '#d1d5db',
-    textDecoration: 'none',
-    fontSize: '14px',
-    fontWeight: '500',
-    padding: '8px 12px',
-    borderRadius: '6px',
-    transition: 'all 0.2s',
-  },
-  navLinkActive: {
-    color: 'white',
-    backgroundColor: '#374151',
+    gap: '8px',
   },
 };
 

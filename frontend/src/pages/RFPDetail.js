@@ -1,19 +1,19 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, Link } from 'react-router-dom';
+import toast from 'react-hot-toast';
 import apiClient from '../api/client';
 
 const VendorModal = ({ isOpen, onClose, rfpId, onSent }) => {
   const [vendors, setVendors] = useState([]);
   const [selectedVendors, setSelectedVendors] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
 
   const fetchVendors = useCallback(async () => {
     try {
       const response = await apiClient.get('/vendors');
       setVendors(response.data.data);
     } catch (err) {
-      setError('Failed to load vendors');
+      toast.error('Failed to load vendors');
     }
   }, []);
 
@@ -33,18 +33,18 @@ const VendorModal = ({ isOpen, onClose, rfpId, onSent }) => {
 
   const handleSend = async () => {
     if (selectedVendors.length === 0) {
-      setError('Please select at least one vendor');
+      toast.error('Please select at least one vendor');
       return;
     }
 
     try {
       setLoading(true);
-      setError(null);
       await apiClient.post(`/rfps/${rfpId}/send`, { vendorIds: selectedVendors });
+      toast.success('RFP sent successfully!');
       onSent();
       onClose();
     } catch (err) {
-      setError(err.response?.data?.error || 'Failed to send RFP');
+      toast.error(err.response?.data?.error || 'Failed to send RFP');
     } finally {
       setLoading(false);
     }
@@ -59,8 +59,6 @@ const VendorModal = ({ isOpen, onClose, rfpId, onSent }) => {
           <h3 className="modal-title">Select Vendors</h3>
           <button className="modal-close" onClick={onClose}>&times;</button>
         </div>
-
-        {error && <div className="alert alert-error">{error}</div>}
 
         <div style={{ maxHeight: '400px', overflowY: 'auto' }}>
           {vendors.map((vendor) => (
@@ -145,6 +143,12 @@ const RFPDetail = () => {
 
   return (
     <div className="container">
+      <div style={{ marginBottom: '20px' }}>
+        <Link to="/" className="btn btn-secondary">
+          ← Back to Dashboard
+        </Link>
+      </div>
+
       <div className="card">
         <div className="card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <div>
@@ -240,9 +244,7 @@ const RFPDetail = () => {
         isOpen={showVendorModal}
         onClose={() => setShowVendorModal(false)}
         rfpId={id}
-        onSent={() => {
-          alert('RFP sent successfully!');
-        }}
+        onSent={() => {}}
       />
     </div>
   );

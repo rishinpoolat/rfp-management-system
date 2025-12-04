@@ -1,4 +1,6 @@
 import React, { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
+import toast from 'react-hot-toast';
 import apiClient from '../api/client';
 
 const VendorForm = ({ vendor, onSave, onCancel }) => {
@@ -84,8 +86,6 @@ const VendorForm = ({ vendor, onSave, onCancel }) => {
 const VendorManagement = () => {
   const [vendors, setVendors] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const [success, setSuccess] = useState(null);
   const [showForm, setShowForm] = useState(false);
   const [editingVendor, setEditingVendor] = useState(null);
 
@@ -98,9 +98,8 @@ const VendorManagement = () => {
       setLoading(true);
       const response = await apiClient.get('/vendors');
       setVendors(response.data.data);
-      setError(null);
     } catch (err) {
-      setError('Failed to load vendors');
+      toast.error('Failed to load vendors');
     } finally {
       setLoading(false);
     }
@@ -110,17 +109,16 @@ const VendorManagement = () => {
     try {
       if (editingVendor) {
         await apiClient.put(`/vendors/${editingVendor.id}`, vendorData);
-        setSuccess('Vendor updated successfully');
+        toast.success('Vendor updated successfully');
       } else {
         await apiClient.post('/vendors', vendorData);
-        setSuccess('Vendor added successfully');
+        toast.success('Vendor added successfully');
       }
       setShowForm(false);
       setEditingVendor(null);
       fetchVendors();
-      setTimeout(() => setSuccess(null), 3000);
     } catch (err) {
-      setError(err.response?.data?.error || 'Failed to save vendor');
+      toast.error(err.response?.data?.error || 'Failed to save vendor');
     }
   };
 
@@ -136,11 +134,10 @@ const VendorManagement = () => {
 
     try {
       await apiClient.delete(`/vendors/${id}`);
-      setSuccess('Vendor deleted successfully');
+      toast.success('Vendor deleted successfully');
       fetchVendors();
-      setTimeout(() => setSuccess(null), 3000);
     } catch (err) {
-      setError(err.response?.data?.error || 'Failed to delete vendor');
+      toast.error(err.response?.data?.error || 'Failed to delete vendor');
     }
   };
 
@@ -159,6 +156,12 @@ const VendorManagement = () => {
 
   return (
     <div className="container">
+      <div style={{ marginBottom: '20px' }}>
+        <Link to="/" className="btn btn-secondary">
+          ← Back to Dashboard
+        </Link>
+      </div>
+
       <div className="card">
         <div className="card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <h2 className="card-title">Vendor Management</h2>
@@ -168,9 +171,6 @@ const VendorManagement = () => {
             </button>
           )}
         </div>
-
-        {error && <div className="alert alert-error">{error}</div>}
-        {success && <div className="alert alert-success">{success}</div>}
 
         {showForm && (
           <VendorForm
