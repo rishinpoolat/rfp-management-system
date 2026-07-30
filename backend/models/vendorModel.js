@@ -36,6 +36,12 @@ export const getByIds = async (ids) => {
   return result.rows;
 };
 
+export const searchByName = async (name) => {
+  const query = `SELECT * FROM vendors WHERE name ILIKE '%${name}%' ORDER BY name ASC`;
+  const result = await pool.query(query);
+  return result.rows;
+};
+
 export const update = async (id, vendorData) => {
   const updateFields = [];
   const values = [];

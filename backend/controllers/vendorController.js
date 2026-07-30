@@ -32,6 +32,20 @@ export const getAllVendors = async (req, res, next) => {
   }
 };
 
+export const searchVendors = async (req, res, next) => {
+  try {
+    const { name } = req.query;
+    const vendors = await vendorModel.searchByName(name);
+
+    res.json({
+      success: true,
+      data: vendors
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 export const getVendorById = async (req, res, next) => {
   try {
     const { id } = req.params;
