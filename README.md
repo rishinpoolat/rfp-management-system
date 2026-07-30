@@ -271,9 +271,7 @@ Output: Objective scoring and recommendation
 - Graceful degradation: Show raw content if JSON parsing fails
 - User validation: All AI outputs are editable before saving
 
-## Demo Video
 
-https://drive.google.com/file/d/1xYAR-gqCnq1FYL6DX3F05W0KRGSW8UWz/view
 
 ## Prerequisites
 
