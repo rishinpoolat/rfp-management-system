@@ -1,0 +1,151 @@
+name: AI Multi-Agent PR Reviewer
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+    paths:
+      - "backend/**"
+      - "frontend/**"
+
+jobs:
+  ai-review:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Get PR Diff
+        id: get_diff
+        run: |
+          git diff origin/${{ github.base_ref }}...HEAD -- backend frontend > pr_diff.txt
+          echo "DIFF_EXISTS=$(if [ -s pr_diff.txt ]; then echo 'true'; else echo 'false'; fi)" >> "$GITHUB_ENV"
+
+      - name: Run OpenRouter Multi-Agent Review
+        if: env.DIFF_EXISTS == 'true'
+        env:
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+          OPENROUTER_MODEL: ${{ vars.OPENROUTER_MODEL || 'meta-llama/llama-3.3-70b-instruct:free' }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          REPO_NAME: ${{ github.repository }}
+        run: |
+          node -e '
+          const fs = require("fs");
+          const https = require("https");
+
+          const MAX_DIFF_CHARS = 12000;
+          const MAX_COMMENT_CHARS = 60000;
+
+          const diff = fs.readFileSync("pr_diff.txt", "utf8").slice(0, MAX_DIFF_CHARS);
+
+          const promptText = `You are a Senior Software Engineer acting as a 2-agent review team for an AI-Powered RFP (Request for Proposal) Management System.
+
+          Stack context:
+          - Backend: Node.js (ES modules) + Express, Sequelize ORM over PostgreSQL, Redis (ioredis) for caching, RabbitMQ (amqplib) for async job processing, Nodemailer for email, express-validator for input validation, OpenAI SDK for AI-powered RFP parsing/creation.
+          - Frontend: React 18 (Create React App), react-router-dom, react-hook-form, axios, react-hot-toast.
+
+          AGENT 1 (Security & Logic Reviewer): Analyze this code diff for security flaws, bugs, and performance issues. Pay special attention to: SQL injection via raw Sequelize queries, missing/incorrect express-validator rules on new routes, unhandled promise rejections around async DB/queue/AI calls, secrets or PII (RFP/vendor data) leaking into logs or responses, and improper RabbitMQ/Redis connection or error handling.
+
+          AGENT 2 (Test Engineer): Identify missing edge cases and write unit test suggestions for these changes (Jest-style for the backend, React Testing Library-style for the frontend where applicable).
+
+          Format your output strictly in clean Markdown with these headers:
+          ## 🛡️ Agent 1: Security & Code Quality Audit
+          ## 🧪 Agent 2: Suggested Unit Tests
+
+          Code Diff:
+          ${diff}`;
+
+          function postJson(options, data) {
+            return new Promise((resolve, reject) => {
+              const req = https.request(options, (res) => {
+                let body = "";
+                res.on("data", (chunk) => (body += chunk));
+                res.on("end", () => resolve({ statusCode: res.statusCode, body }));
+              });
+              req.on("error", reject);
+              req.write(data);
+              req.end();
+            });
+          }
+
+          async function run() {
+            const apiKey = process.env.OPENROUTER_API_KEY;
+            if (!apiKey) {
+              throw new Error("OPENROUTER_API_KEY secret is not set.");
+            }
+
+            const reqData = JSON.stringify({
+              model: process.env.OPENROUTER_MODEL,
+              messages: [{ role: "user", content: promptText }]
+            });
+
+            const options = {
+              hostname: "openrouter.ai",
+              path: "/api/v1/chat/completions",
+              method: "POST",
+              headers: {
+                "Authorization": `Bearer ${apiKey}`,
+                "Content-Type": "application/json",
+                "HTTP-Referer": "https://github.com",
+                "X-Title": "GitHub Actions PR Reviewer",
+                "Content-Length": Buffer.byteLength(reqData)
+              }
+            };
+
+            const { statusCode, body } = await postJson(options, reqData);
+
+            if (statusCode < 200 || statusCode >= 300) {
+              throw new Error(`OpenRouter request failed (${statusCode}): ${body.slice(0, 500)}`);
+            }
+
+            let parsed;
+            try {
+              parsed = JSON.parse(body);
+            } catch (err) {
+              throw new Error(`Failed to parse OpenRouter response: ${err.message}`);
+            }
+
+            let reviewComment = parsed.choices?.[0]?.message?.content;
+            if (!reviewComment) {
+              throw new Error(`OpenRouter returned no review content: ${body.slice(0, 500)}`);
+            }
+            if (reviewComment.length > MAX_COMMENT_CHARS) {
+              reviewComment = reviewComment.slice(0, MAX_COMMENT_CHARS) + "\n\n_(truncated)_";
+            }
+
+            const ghData = JSON.stringify({ body: reviewComment });
+            const ghOptions = {
+              hostname: "api.github.com",
+              path: `/repos/${process.env.REPO_NAME}/issues/${process.env.PR_NUMBER}/comments`,
+              method: "POST",
+              headers: {
+                "Authorization": `Bearer ${process.env.GITHUB_TOKEN}`,
+                "User-Agent": "AI-Agent-Action",
+                "Content-Type": "application/json",
+                "Content-Length": Buffer.byteLength(ghData)
+              }
+            };
+
+            const ghResult = await postJson(ghOptions, ghData);
+            if (ghResult.statusCode < 200 || ghResult.statusCode >= 300) {
+              throw new Error(`Failed to post PR comment (${ghResult.statusCode}): ${ghResult.body.slice(0, 500)}`);
+            }
+            console.log("AI Review posted successfully via OpenRouter!");
+          }
+
+          run().catch((err) => {
+            console.error(err);
+            process.exit(1);
+          });
+          '
